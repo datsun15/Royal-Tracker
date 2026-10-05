@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Royal Caribbean Live AIS Fleet Tracker</title>
+  <title>Royal Caribbean Live Fleet Tracker</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -28,10 +28,10 @@
       padding: 14px 18px;
       border-radius: 8px; 
       box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-      max-width: 300px;
+      max-width: 320px;
     }
-    .status-connecting { color: #d97706; font-weight: bold; }
     .status-active { color: #059669; font-weight: bold; }
+    .status-static { color: #d97706; font-weight: bold; }
     .status-error { color: #dc2626; font-weight: bold; }
     .popup-title { font-weight: bold; font-size: 14px; color: #003366; }
     .popup-class { font-size: 11px; color: #666; margin-bottom: 6px; }
@@ -48,7 +48,7 @@
 
   <div class="panel">
     <h3 style="margin: 0 0 6px 0;">🚢 Royal Caribbean Fleet</h3>
-    <div id="status" class="status-connecting">Connecting to AIS stream...</div>
+    <div id="status" class="status-static">Displaying Baseline Positions</div>
     <div id="count" style="font-size: 12px; color: #444; margin-top: 4px;">Ships displayed: 30 / 30</div>
   </div>
 
@@ -58,10 +58,10 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // Insert your AISStream API key here
+    // Paste your AISStream API key here for live ship placements
     const AISSTREAM_API_KEY = "6cce6940b3dd7ef24fe288ef84a041ec30a3bdf9";
 
-    // 30-Ship Fleet Registry with MMSI numbers for AIS streaming
+    // Fleet Registry with MMSI numbers
     const fleetRegistry = {
       // Icon Class
       "311001178": { name: "Icon of the Seas", class: "Icon Class", lat: 25.774, lon: -80.193, speed: 18.2, heading: 90 },
@@ -76,7 +76,7 @@
       "311000227": { name: "Allure of the Seas", class: "Oasis Class", lat: 20.629, lon: -87.073, speed: 17.4, heading: 180 },
       "311000399": { name: "Oasis of the Seas", class: "Oasis Class", lat: 26.095, lon: -80.122, speed: 0.0, heading: 0 },
 
-      // Quantum & Quantum Ultra Class
+      // Quantum Class
       "311000748": { name: "Spectrum of the Seas", class: "Quantum Ultra Class", lat: 1.286, lon: 103.854, speed: 16.7, heading: 270 },
       "311000911": { name: "Odyssey of the Seas", class: "Quantum Ultra Class", lat: 37.983, lon: 23.727, speed: 19.0, heading: 140 },
       "311000508": { name: "Ovation of the Seas", class: "Quantum Class", lat: 58.301, lon: -134.419, speed: 0.0, heading: 0 },
@@ -110,7 +110,7 @@
 
     const mmsiList = Object.keys(fleetRegistry);
 
-    // Dynamic SVG icon creation (Circle when docked, Arrow when moving)
+    // Create dynamic SVG map icons
     function createShipIcon(speed, heading) {
       const isDocked = speed <= 1.0;
 
@@ -145,16 +145,15 @@
     // Initialize Map
     const map = L.map('map').setView([20.0, -30.0], 3);
 
-    // CartoDB Voyager Tile Layer (No API Key required & forces English country names)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    // Keyless OpenStreetMap Layer
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      subdomains: 'abcd',
-      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
+      attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
     const activeMarkers = {};
 
-    // Render baseline markers
+    // Initial marker placement
     mmsiList.forEach(mmsi => {
       const ship = fleetRegistry[mmsi];
       const icon = createShipIcon(ship.speed, ship.heading);
@@ -173,13 +172,13 @@
       activeMarkers[mmsi] = marker;
     });
 
-    // Establish WebSocket stream for live AIS updates
+    // Connect to real-time AIS feed
     function connectAISStream() {
       const statusEl = document.getElementById('status');
 
       if (!AISSTREAM_API_KEY || AISSTREAM_API_KEY === "YOUR_AISSTREAM_API_KEY") {
-        statusEl.className = "status-connecting";
-        statusEl.innerText = "Displaying default fleet positions";
+        statusEl.className = "status-static";
+        statusEl.innerText = "Displaying Baseline Positions";
         return;
       }
 
@@ -187,7 +186,7 @@
 
       socket.onopen = function () {
         statusEl.className = "status-active";
-        statusEl.innerText = "● Live Satellite AIS Active";
+        statusEl.innerText = "● Live AIS Positions Active";
 
         const subscriptionMessage = {
           APIKey: AISSTREAM_API_KEY,
@@ -212,6 +211,7 @@
           const shipInfo = fleetRegistry[mmsi] || { name: `MMSI: ${mmsi}`, class: "Royal Caribbean" };
 
           if (activeMarkers[mmsi]) {
+            // Update placement dynamically on map
             activeMarkers[mmsi].setLatLng([lat, lon]);
             activeMarkers[mmsi].setIcon(createShipIcon(speed, heading));
 
@@ -230,12 +230,12 @@
 
       socket.onerror = function () {
         statusEl.className = "status-error";
-        statusEl.innerText = "Stream Error - Check API Key";
+        statusEl.innerText = "AIS Stream Error - Check Key";
       };
 
       socket.onclose = function () {
-        statusEl.className = "status-error";
-        statusEl.innerText = "Disconnected. Retrying...";
+        statusEl.className = "status-static";
+        statusEl.innerText = "Reconnecting AIS...";
         setTimeout(connectAISStream, 5000);
       };
     }
