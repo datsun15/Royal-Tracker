@@ -7,62 +7,60 @@
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  
+  <!-- Leaflet MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: Arial, sans-serif;
-    }
-    #map {
-      height: 100vh;
-      width: 100vw;
-    }
-    .legend {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1000;
-      background: white;
-      padding: 10px 15px;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
+    #map { height: 100vh; width: 100vw; }
+    .panel {
+      position: absolute; top: 15px; left: 15px; z-index: 1000;
+      background: rgba(255, 255, 255, 0.95); padding: 12px 18px;
+      border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
     }
   </style>
 </head>
 <body>
 
-  <div class="legend">
-    <h3>🚢 Royal Tracker</h3>
-    <p>Automatically updated via GitHub Actions</p>
+  <div class="panel">
+    <h3 style="margin:0 0 5px 0;">🚢 Royal Tracker</h3>
+    <div id="ship-count">Loading fleet positions...</div>
   </div>
 
   <div id="map"></div>
 
-  <!-- Leaflet JS -->
+  <!-- Leaflet & MarkerCluster JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script>
-    // Initialize map centered near the Caribbean
-    const map = L.map('map').setView([20.0, -75.0], 5);
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
-    // Load free OpenStreetMap tiles
+  <script>
+    const map = L.map('map').setView([25.0, -70.0], 4);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Fetch scraped ship coordinates from ships.json
+    const markers = L.markerClusterGroup();
+
     fetch('ships.json')
-      .then(response => response.json())
+      .then(res => res.json())
       .then(ships => {
+        document.getElementById('ship-count').innerText = `Active Ships Tracked: ${ships.length}`;
+        
         ships.forEach(ship => {
-          L.marker([ship.lat, ship.lon])
-            .addTo(map)
-            .bindPopup(`<b>${ship.name}</b><br>Lat: ${ship.lat}<br>Lon: ${ship.lon}`);
+          const marker = L.marker([ship.lat, ship.lon])
+            .bindPopup(`<b>${ship.name}</b><br>Latitude: ${ship.lat}<br>Longitude: ${ship.lon}`);
+          markers.addLayer(marker);
         });
+
+        map.addLayer(markers);
       })
-      .catch(error => console.error('Error loading ship positions:', error));
+      .catch(err => {
+        document.getElementById('ship-count').innerText = 'Error loading position data.';
+        console.error(err);
+      });
   </script>
 </body>
 </html>
