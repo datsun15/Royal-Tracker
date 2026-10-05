@@ -67,7 +67,6 @@
       // Icon Class
       { name: "Icon of the Seas", class: "Icon Class", lat: 25.774, lon: -80.193, speed: 18.2, heading: "Miami to Cozumel" },
       { name: "Star of the Seas", class: "Icon Class", lat: 28.406, lon: -80.605, speed: 19.1, heading: "Port Canaveral to Perfect Day" },
-      { name: "Legend of the Seas", class: "Icon Class", lat: 41.385, lon: 2.173, speed: 17.5, heading: "Barcelona to Palma de Mallorca" },
 
       // Oasis Class
       { name: "Utopia of the Seas", class: "Oasis Class", lat: 25.083, lon: -77.344, speed: 15.0, heading: "Nassau to Perfect Day" },
@@ -112,22 +111,21 @@
     // Initialize Map
     const map = L.map('map').setView([20.0, -40.0], 3);
 
-    // OpenStreetMap Tile Layer
+    // Tile Layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // MarkerCluster Group to handle clustered markers neatly
+    // Cluster setup
     const markerCluster = L.markerClusterGroup();
 
-    // Populate Map with Markers
     fleet.forEach(ship => {
       const marker = L.marker([ship.lat, ship.lon])
         .bindPopup(`
           <div class="popup-title">🚢 ${ship.name}</div>
           <div class="popup-class">${ship.class}</div>
-          <b>Current Route:</b> ${ship.heading}<br>
+          <b>Route:</b> ${ship.heading}<br>
           <b>Speed:</b> ${ship.speed} knots<br>
           <b>Coordinates:</b> ${ship.lat.toFixed(3)}, ${ship.lon.toFixed(3)}
         `);
@@ -135,8 +133,6 @@
     });
 
     map.addLayer(markerCluster);
-
-    // Update Status Box
     document.getElementById('status').innerText = `Active Ships Tracked: ${fleet.length}`;
   </script>
 </body>
