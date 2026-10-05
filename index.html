@@ -36,7 +36,6 @@
     .popup-title { font-weight: bold; font-size: 14px; color: #003366; }
     .popup-class { font-size: 11px; color: #666; margin-bottom: 6px; }
     
-    /* Icon styling */
     .custom-ship-icon {
       display: flex;
       align-items: center;
@@ -48,7 +47,7 @@
 <body>
 
   <div class="panel">
-    <h3 style="margin: 0 0 6px 0;">🚢 Royal Tracker</h3>
+    <h3 style="margin: 0 0 6px 0;">🚢 Royal Caribbean Fleet</h3>
     <div id="status" class="status-connecting">Connecting to AIS stream...</div>
     <div id="count" style="font-size: 12px; color: #444; margin-top: 4px;">Ships displayed: 30 / 30</div>
   </div>
@@ -59,10 +58,10 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // Replace with your free API key from https://aisstream.io
+    // Insert your AISStream API key here
     const AISSTREAM_API_KEY = "6cce6940b3dd7ef24fe288ef84a041ec30a3bdf9";
 
-    // Full 30-ship fleet registry with baseline values
+    // 30-Ship Fleet Registry with MMSI numbers for AIS streaming
     const fleetRegistry = {
       // Icon Class
       "311001178": { name: "Icon of the Seas", class: "Icon Class", lat: 25.774, lon: -80.193, speed: 18.2, heading: 90 },
@@ -111,7 +110,7 @@
 
     const mmsiList = Object.keys(fleetRegistry);
 
-    // Helper: Creates dynamic SVG icons depending on speed and heading
+    // Dynamic SVG icon creation (Circle when docked, Arrow when moving)
     function createShipIcon(speed, heading) {
       const isDocked = speed <= 1.0;
 
@@ -146,7 +145,7 @@
     // Initialize Map
     const map = L.map('map').setView([20.0, -30.0], 3);
 
-    // CartoDB Voyager Tile Layer (English country/city names)
+    // CartoDB Voyager Tile Layer (No API Key required & forces English country names)
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,
       subdomains: 'abcd',
@@ -155,7 +154,7 @@
 
     const activeMarkers = {};
 
-    // Render initial markers
+    // Render baseline markers
     mmsiList.forEach(mmsi => {
       const ship = fleetRegistry[mmsi];
       const icon = createShipIcon(ship.speed, ship.heading);
@@ -174,16 +173,17 @@
       activeMarkers[mmsi] = marker;
     });
 
-    // Handle WebSocket for real-time transponder data updates
+    // Establish WebSocket stream for live AIS updates
     function connectAISStream() {
+      const statusEl = document.getElementById('status');
+
       if (!AISSTREAM_API_KEY || AISSTREAM_API_KEY === "YOUR_AISSTREAM_API_KEY") {
-        document.getElementById('status').className = "status-connecting";
-        document.getElementById('status').innerText = "Using default fleet positions";
+        statusEl.className = "status-connecting";
+        statusEl.innerText = "Displaying default fleet positions";
         return;
       }
 
       const socket = new WebSocket("wss://stream.aisstream.io/v0/stream");
-      const statusEl = document.getElementById('status');
 
       socket.onopen = function () {
         statusEl.className = "status-active";
@@ -230,7 +230,7 @@
 
       socket.onerror = function () {
         statusEl.className = "status-error";
-        statusEl.innerText = "Stream Error - Using Default Positions";
+        statusEl.innerText = "Stream Error - Check API Key";
       };
 
       socket.onclose = function () {
