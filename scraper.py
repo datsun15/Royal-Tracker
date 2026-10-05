@@ -2,7 +2,7 @@ import json
 import time
 import requests
 
-# Royal Caribbean Fleet with MMSI numbers (Unique transponder ID for each ship)
+# Royal Caribbean Fleet with MMSI numbers
 SHIPS = [
     {"name": "Icon of the Seas", "mmsi": "311001128"},
     {"name": "Symphony of the Seas", "mmsi": "311000646"},
@@ -36,46 +36,62 @@ SHIPS = [
 
 fleet_data = []
 
+# Mirror AIS lookup endpoint that permits standard automation requests
+BASE_URL = "https://myshiptracking.com/requests_vess2.php"
+
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Referer": "https://www.vesselfinder.com/"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "X-Requested-With": "XMLHttpRequest"
 }
 
-print("Fetching live AIS ship coordinates...")
+print("Fetching live AIS positions...")
 
 for ship in SHIPS:
     try:
-        # Query public AIS transponder endpoint by MMSI
-        url = f"https://www.vesselfinder.com/api/pub/click/{ship['mmsi']}"
-        res = requests.get(url, headers=headers, timeout=10)
+        # Request position data by MMSI number
+        response = requests.get(
+            f"https://data.marinetraffic.com/api/exportvessel/v:5/{ship['mmsi']}", 
+            headers=headers, 
+            timeout=10
+        )
         
-        if res.status_code == 200:
-            data = res.json()
-            # Extract coordinates from response
-            lat = data.get("lat") or data.get("latitude")
-            lon = data.get("lon") or data.get("longitude")
-            
-            if lat and lon and (lat != 0 and lon != 0):
-                fleet_data.append({
-                    "name": ship["name"],
-                    "mmsi": ship["mmsi"],
-                    "lat": float(lat),
-                    "lon": float(lon)
-                })
-                print(f"[✓] {ship['name']}: ({lat}, {lon})")
-            else:
-                print(f"[!] {ship['name']}: No valid coordinates returned.")
+        # Fallback public AIS lookup strategy if direct API returns empty
+        if response.status_code != 200 or not response.text:
+            response = requests.get(
+                f"https://www.myshiptracking.com/vessel-{ship['mmsi']}", 
+                headers=headers, 
+                timeout=10
+            )
+
+        # Parse latitude and longitude from the text response
+        import re
+        lat_match = re.search(r'["\']?lat["\']?\s*[:=]\s*([+-]?\d+\.\d+)', response.text, re.IGNORECASE)
+        lon_match = re.search(r'["\']?lng["\']?\s*[:=]\s*([+-]?\d+\.\d+)', response.text, re.IGNORECASE)
+        
+        if not lon_match:
+            lon_match = re.search(r'["\']?lon["\']?\s*[:=]\s*([+-]?\d+\.\d+)', response.text, re.IGNORECASE)
+
+        if lat_match and lon_match:
+            lat = float(lat_match.group(1))
+            lon = float(lon_match.group(1))
+            fleet_data.append({
+                "name": ship["name"],
+                "mmsi": ship["mmsi"],
+                "lat": lat,
+                "lon": lon
+            })
+            print(f"[✓] Found {ship['name']}: Lat {lat}, Lon {lon}")
         else:
-            print(f"[!] {ship['name']}: HTTP Status {res.status_code}")
+            print(f"[!] {ship['name']}: Could not extract coordinates.")
 
-    except Exception as err:
-        print(f"[X] {ship['name']} failed: {err}")
+    except Exception as e:
+        print(f"[X] {ship['name']} error: {e}")
 
-    # Delay to remain within rate limits
-    time.sleep(2)
+    time.sleep(1.5)
 
-# Write valid positions to ships.json
+# Save positions
 with open("ships.json", "w") as f:
     json.dump(fleet_data, f, indent=2)
 
-print(f"\nSaved {len(fleet_data)} active ship positions to ships.json.")
+print(f"\nCompleted! Written {len(fleet_data)} ships to ships.json")
