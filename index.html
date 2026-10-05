@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Royal Tracker</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
+    }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+    .legend {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="legend">
+    <h3>🚢 Royal Tracker</h3>
+    <p>Automatically updated via GitHub Actions</p>
+  </div>
+
+  <div id="map"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // Initialize map centered near the Caribbean
+    const map = L.map('map').setView([20.0, -75.0], 5);
+
+    // Load free OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Fetch scraped ship coordinates from ships.json
+    fetch('ships.json')
+      .then(response => response.json())
+      .then(ships => {
+        ships.forEach(ship => {
+          L.marker([ship.lat, ship.lon])
+            .addTo(map)
+            .bindPopup(`<b>${ship.name}</b><br>Lat: ${ship.lat}<br>Lon: ${ship.lon}`);
+        });
+      })
+      .catch(error => console.error('Error loading ship positions:', error));
+  </script>
+</body>
+</html>
