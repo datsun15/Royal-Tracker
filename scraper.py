@@ -9,7 +9,7 @@ SHIPS = [
     # Icon Class
     {"name": "Icon of the Seas", "url": "https://www.cruisemapper.com/ships/Icon-Of-The-Seas-2166"},
     {"name": "Star of the Seas", "url": "https://www.cruisemapper.com/ships/Star-Of-The-Seas-2715"},
-    {"name": "Legend of the Seas", "url": "https://www.cruisemapper.com/ships/Legend-Of-The-Seas-2113"}
+    {"name": "Legend of the Seas", "url": "https://www.cruisemapper.com/ships/Legend-Of-The-Seas-2113"},
 
     # Oasis Class
     {"name": "Utopia of the Seas", "url": "https://www.cruisemapper.com/ships/Utopia-Of-The-Seas-2167"},
