@@ -12,20 +12,35 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 
   <style>
-    body, html { margin: 0; padding: 0; height: 100%; font-family: sans-serif; }
-    #map { height: 100vh; width: 100vw; }
-    .panel {
-      position: absolute; top: 15px; left: 15px; z-index: 1000;
-      background: rgba(255, 255, 255, 0.95); padding: 12px 18px;
-      border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, sans-serif;
     }
+    #map {
+      height: 100vh;
+      width: 100vw;
+    }
+    .panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.92);
+      padding: 12px 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+    }
+    .status-loading { color: #d97706; font-weight: bold; }
+    .status-complete { color: #059669; font-weight: bold; }
   </style>
 </head>
 <body>
 
   <div class="panel">
-    <h3 style="margin:0 0 5px 0;">🚢 Royal Tracker</h3>
-    <div id="ship-count">Loading fleet positions...</div>
+    <h3 style="margin: 0 0 5px 0;">🚢 Royal Tracker</h3>
+    <div id="status" class="status-loading">Loading live AIS fleet positions...</div>
   </div>
 
   <div id="map"></div>
@@ -35,32 +50,83 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <script>
-    const map = L.map('map').setView([25.0, -70.0], 4);
+    // Comprehensive Royal Caribbean Fleet MMSI List
+    const fleet = [
+      { name: "Icon of the Seas", mmsi: "311001128" },
+      { name: "Symphony of the Seas", mmsi: "311000646" },
+      { name: "Wonder of the Seas", mmsi: "311001033" },
+      { name: "Utopia of the Seas", mmsi: "311001174" },
+      { name: "Oasis of the Seas", mmsi: "311020600" },
+      { name: "Allure of the Seas", mmsi: "311036300" },
+      { name: "Harmony of the Seas", mmsi: "311000399" },
+      { name: "Spectrum of the Seas", mmsi: "311000758" },
+      { name: "Odyssey of the Seas", mmsi: "311000912" },
+      { name: "Ovation of the Seas", mmsi: "311000397" },
+      { name: "Anthem of the Seas", mmsi: "311000274" },
+      { name: "Quantum of the Seas", mmsi: "311000267" },
+      { name: "Freedom of the Seas", mmsi: "311000122" },
+      { name: "Liberty of the Seas", mmsi: "311000223" },
+      { name: "Independence of the Seas", mmsi: "311000244" },
+      { name: "Voyager of the Seas", mmsi: "311312000" },
+      { name: "Explorer of the Seas", mmsi: "311313000" },
+      { name: "Adventure of the Seas", mmsi: "311315000" },
+      { name: "Navigator of the Seas", mmsi: "311492000" },
+      { name: "Mariner of the Seas", mmsi: "311493000" },
+      { name: "Radiance of the Seas", mmsi: "311019000" },
+      { name: "Brilliance of the Seas", mmsi: "311361000" },
+      { name: "Serenade of the Seas", mmsi: "311494000" },
+      { name: "Jewel of the Seas", mmsi: "311582000" },
+      { name: "Grandeur of the Seas", mmsi: "311781000" },
+      { name: "Enchantment of the Seas", mmsi: "311782000" },
+      { name: "Rhapsody of the Seas", mmsi: "311783000" },
+      { name: "Vision of the Seas", mmsi: "311784000" }
+    ];
+
+    // Initialize Map
+    const map = L.map('map').setView([22.0, -70.0], 4);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    const markers = L.markerClusterGroup();
+    const markerCluster = L.markerClusterGroup();
+    let trackedCount = 0;
 
-    fetch('ships.json')
-      .then(res => res.json())
-      .then(ships => {
-        document.getElementById('ship-count').innerText = `Active Ships Tracked: ${ships.length}`;
-        
-        ships.forEach(ship => {
-          const marker = L.marker([ship.lat, ship.lon])
-            .bindPopup(`<b>${ship.name}</b><br>Latitude: ${ship.lat}<br>Longitude: ${ship.lon}`);
-          markers.addLayer(marker);
-        });
+    // Client-side live AIS lookup function using CORS proxy
+    async function fetchShipPositions() {
+      const statusElement = document.getElementById('status');
 
-        map.addLayer(markers);
-      })
-      .catch(err => {
-        document.getElementById('ship-count').innerText = 'Error loading position data.';
-        console.error(err);
-      });
+      for (const ship of fleet) {
+        try {
+          // Direct fetch through a CORS proxy to public AIS transponder endpoints
+          const targetUrl = `https://vesselfinder.com/api/pub/click/${ship.mmsi}`;
+          const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+
+          const response = await fetch(proxyUrl);
+          if (response.ok) {
+            const data = await response.json();
+            const lat = parseFloat(data.lat || data.latitude);
+            const lon = parseFloat(data.lon || data.longitude);
+
+            if (!isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0) {
+              const marker = L.marker([lat, lon])
+                .bindPopup(`<b>${ship.name}</b><br>MMSI: ${ship.mmsi}<br>Lat: ${lat}<br>Lon: ${lon}`);
+              markerCluster.addLayer(marker);
+              trackedCount++;
+            }
+          }
+        } catch (err) {
+          console.warn(`Could not load position for ${ship.name}`, err);
+        }
+      }
+
+      map.addLayer(markerCluster);
+      statusElement.className = 'status-complete';
+      statusElement.innerText = `Tracked Ships Active: ${trackedCount} / ${fleet.length}`;
+    }
+
+    fetchShipPositions();
   </script>
 </body>
 </html>
