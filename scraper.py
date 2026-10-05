@@ -1,4 +1,5 @@
 import json
+import re
 import time
 import requests
 
@@ -36,61 +37,50 @@ SHIPS = [
 
 fleet_data = []
 
-# Mirror AIS lookup endpoint that permits standard automation requests
-BASE_URL = "https://myshiptracking.com/requests_vess2.php"
-
 headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/javascript, */*; q=0.01",
-    "X-Requested-With": "XMLHttpRequest"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 }
 
 print("Fetching live AIS positions...")
 
 for ship in SHIPS:
     try:
-        # Request position data by MMSI number
-        response = requests.get(
-            f"https://data.marinetraffic.com/api/exportvessel/v:5/{ship['mmsi']}", 
-            headers=headers, 
-            timeout=10
-        )
-        
-        # Fallback public AIS lookup strategy if direct API returns empty
-        if response.status_code != 200 or not response.text:
-            response = requests.get(
-                f"https://www.myshiptracking.com/vessel-{ship['mmsi']}", 
-                headers=headers, 
-                timeout=10
-            )
+        # OpenSeaMap / Public AIS Data API
+        url = f"https://map.openseamap.org/api/get_vessel_pos.php?mmsi={ship['mmsi']}"
+        res = requests.get(url, headers=headers, timeout=10)
 
-        # Parse latitude and longitude from the text response
-        import re
-        lat_match = re.search(r'["\']?lat["\']?\s*[:=]\s*([+-]?\d+\.\d+)', response.text, re.IGNORECASE)
-        lon_match = re.search(r'["\']?lng["\']?\s*[:=]\s*([+-]?\d+\.\d+)', response.text, re.IGNORECASE)
-        
-        if not lon_match:
-            lon_match = re.search(r'["\']?lon["\']?\s*[:=]\s*([+-]?\d+\.\d+)', response.text, re.IGNORECASE)
+        if res.status_code == 200 and res.text.strip():
+            # Parse response
+            try:
+                data = res.json()
+                lat = float(data.get("lat", 0))
+                lon = float(data.get("lon", 0))
+            except Exception:
+                # Regular expression parsing fallback if format is JSONP/text
+                lat_match = re.search(r'["\']?lat["\']?\s*[:=]\s*([+-]?\d+\.\d+)', res.text, re.IGNORECASE)
+                lon_match = re.search(r'["\']?lon["\']?\s*[:=]\s*([+-]?\d+\.\d+)', res.text, re.IGNORECASE)
+                lat = float(lat_match.group(1)) if lat_match else 0
+                lon = float(lon_match.group(1)) if lon_match else 0
 
-        if lat_match and lon_match:
-            lat = float(lat_match.group(1))
-            lon = float(lon_match.group(1))
-            fleet_data.append({
-                "name": ship["name"],
-                "mmsi": ship["mmsi"],
-                "lat": lat,
-                "lon": lon
-            })
-            print(f"[✓] Found {ship['name']}: Lat {lat}, Lon {lon}")
+            if lat != 0 and lon != 0:
+                fleet_data.append({
+                    "name": ship["name"],
+                    "mmsi": ship["mmsi"],
+                    "lat": lat,
+                    "lon": lon
+                })
+                print(f"[✓] Found {ship['name']}: Lat {lat}, Lon {lon}")
+            else:
+                print(f"[!] {ship['name']}: No current position broadcast.")
         else:
-            print(f"[!] {ship['name']}: Could not extract coordinates.")
+            print(f"[!] {ship['name']}: Endpoint returned status {res.status_code}")
 
     except Exception as e:
-        print(f"[X] {ship['name']} error: {e}")
+        print(f"[X] {ship['name']} failed: {e}")
 
-    time.sleep(1.5)
+    time.sleep(1)
 
-# Save positions
+# Write valid positions
 with open("ships.json", "w") as f:
     json.dump(fleet_data, f, indent=2)
 
