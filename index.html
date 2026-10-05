@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Royal Caribbean Live Fleet Tracker</title>
+  <title>Royal Tracker</title>
   
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -47,9 +47,9 @@
 <body>
 
   <div class="panel">
-    <h3 style="margin: 0 0 6px 0;">🚢 Royal Caribbean Fleet</h3>
-    <div id="status" class="status-static">Displaying Baseline Positions</div>
-    <div id="count" style="font-size: 12px; color: #444; margin-top: 4px;">Ships displayed: 30 / 30</div>
+    <h3 style="margin: 0 0 6px 0;">🚢 Royal Tracker</h3>
+    <div id="status" class="status-static">Loading Fleet Data...</div>
+    <div id="count" style="font-size: 12px; color: #444; margin-top: 4px;">Ships displayed: 0</div>
   </div>
 
   <div id="map"></div>
@@ -58,57 +58,13 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // Paste your AISStream API key here for live ship placements
-    const AISSTREAM_API_KEY = "6cce6940b3dd7ef24fe288ef84a041ec30a3bdf9";
+    // Configuration - Replace with your project parameters
+    const SUPABASE_PROJECT_REF = "https://supabase.com/dashboard/project/kmwkvbxsoxofbpvgnuqt";
+    const SUPABASE_ANON_KEY = "sb_publishable_F8V4F3G6J8pM9KIUIOAZAw_5IN0J-pk";
 
-    // Fleet Registry with MMSI numbers
-    const fleetRegistry = {
-      // Icon Class
-      "311001178": { name: "Icon of the Seas", class: "Icon Class", lat: 25.774, lon: -80.193, speed: 18.2, heading: 90 },
-      "311001229": { name: "Star of the Seas", class: "Icon Class", lat: 28.406, lon: -80.605, speed: 19.1, heading: 120 },
-      "9888560":   { name: "Legend of the Seas", class: "Icon Class", lat: 41.385, lon: 2.173, speed: 13.2, heading: 268 },
-
-      // Oasis Class
-      "311001153": { name: "Utopia of the Seas", class: "Oasis Class", lat: 25.083, lon: -77.344, speed: 0.0, heading: 0 },
-      "311000933": { name: "Wonder of the Seas", class: "Oasis Class", lat: 20.508, lon: -86.949, speed: 16.5, heading: 210 },
-      "311000660": { name: "Symphony of the Seas", class: "Oasis Class", lat: 18.341, lon: -64.931, speed: 19.2, heading: 300 },
-      "311000342": { name: "Harmony of the Seas", class: "Oasis Class", lat: 29.301, lon: -94.797, speed: 0.0, heading: 0 },
-      "311000227": { name: "Allure of the Seas", class: "Oasis Class", lat: 20.629, lon: -87.073, speed: 17.4, heading: 180 },
-      "311000399": { name: "Oasis of the Seas", class: "Oasis Class", lat: 26.095, lon: -80.122, speed: 0.0, heading: 0 },
-
-      // Quantum Class
-      "311000748": { name: "Spectrum of the Seas", class: "Quantum Ultra Class", lat: 1.286, lon: 103.854, speed: 16.7, heading: 270 },
-      "311000911": { name: "Odyssey of the Seas", class: "Quantum Ultra Class", lat: 37.983, lon: 23.727, speed: 19.0, heading: 140 },
-      "311000508": { name: "Ovation of the Seas", class: "Quantum Class", lat: 58.301, lon: -134.419, speed: 0.0, heading: 0 },
-      "311000274": { name: "Anthem of the Seas", class: "Quantum Class", lat: 50.909, lon: -1.404, speed: 17.8, heading: 220 },
-      "311000171": { name: "Quantum of the Seas", class: "Quantum Class", lat: -36.848, lon: 174.763, speed: 15.2, heading: 260 },
-
-      // Freedom Class
-      "311000083": { name: "Freedom of the Seas", class: "Freedom Class", lat: 25.778, lon: -80.180, speed: 0.0, heading: 0 },
-      "311000085": { name: "Liberty of the Seas", class: "Freedom Class", lat: 40.712, lon: -74.006, speed: 16.9, heading: 150 },
-      "311000262": { name: "Independence of the Seas", class: "Freedom Class", lat: 25.044, lon: -77.350, speed: 17.1, heading: 320 },
-
-      // Voyager Class
-      "311000081": { name: "Voyager of the Seas", class: "Voyager Class", lat: 13.082, lon: 80.270, speed: 15.6, heading: 110 },
-      "311000082": { name: "Explorer of the Seas", class: "Voyager Class", lat: 42.650, lon: 18.094, speed: 16.2, heading: 160 },
-      "311000084": { name: "Adventure of the Seas", class: "Voyager Class", lat: 18.465, lon: -66.116, speed: 0.0, heading: 0 },
-      "311000086": { name: "Navigator of the Seas", class: "Voyager Class", lat: 33.742, lon: -118.272, speed: 18.4, heading: 200 },
-      "311000087": { name: "Mariner of the Seas", class: "Voyager Class", lat: 28.401, lon: -80.600, speed: 0.0, heading: 0 },
-
-      // Radiance Class
-      "311000088": { name: "Radiance of the Seas", class: "Radiance Class", lat: 57.053, lon: -135.330, speed: 14.5, heading: 130 },
-      "311000089": { name: "Brilliance of the Seas", class: "Radiance Class", lat: 21.306, lon: -157.858, speed: 15.9, heading: 45 },
-      "311000090": { name: "Serenade of the Seas", class: "Radiance Class", lat: -22.906, lon: -43.172, speed: 0.0, heading: 0 },
-      "311000091": { name: "Jewel of the Seas", class: "Radiance Class", lat: 36.434, lon: 28.217, speed: 17.2, heading: 95 },
-
-      // Vision Class
-      "311000092": { name: "Grandeur of the Seas", class: "Vision Class", lat: 20.889, lon: -156.474, speed: 13.9, heading: 290 },
-      "311000093": { name: "Enchantment of the Seas", class: "Vision Class", lat: 39.290, lon: -76.612, speed: 0.0, heading: 0 },
-      "311000094": { name: "Rhapsody of the Seas", class: "Vision Class", lat: 9.359, lon: -79.901, speed: 14.7, heading: 180 },
-      "311000095": { name: "Vision of the Seas", class: "Vision Class", lat: 32.294, lon: -64.783, speed: 0.0, heading: 0 }
-    };
-
-    const mmsiList = Object.keys(fleetRegistry);
+    // In-memory containers populated dynamically from Supabase
+    const fleetRegistry = {};
+    const activeMarkers = {};
 
     // Create dynamic SVG map icons
     function createShipIcon(speed, heading) {
@@ -151,50 +107,76 @@
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    const activeMarkers = {};
+    // Fetch ship fleet metadata directly from Supabase REST API
+    async function loadFleetFromSupabase() {
+      const statusEl = document.getElementById('status');
+      const countEl = document.getElementById('count');
 
-    // Initial marker placement
-    mmsiList.forEach(mmsi => {
-      const ship = fleetRegistry[mmsi];
-      const icon = createShipIcon(ship.speed, ship.heading);
-      const marker = L.marker([ship.lat, ship.lon], { icon: icon }).addTo(map);
-      
-      const statusText = ship.speed > 1.0 ? `At Sea (${ship.speed} kts)` : `Docked / Anchored`;
+      try {
+        const response = await fetch(`https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/ships?select=*`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
 
-      marker.bindPopup(`
-        <div class="popup-title">🚢 ${ship.name}</div>
-        <div class="popup-class">${ship.class}</div>
-        <b>Status:</b> ${statusText}<br>
-        <b>Heading:</b> ${ship.heading}°<br>
-        <b>Coordinates:</b> ${ship.lat.toFixed(3)}, ${ship.lon.toFixed(3)}
-      `);
+        if (!response.ok) throw new Error("Failed to load ships from database");
 
-      activeMarkers[mmsi] = marker;
-    });
+        const ships = await response.json();
 
-    // Connect to real-time AIS feed
+        ships.forEach(ship => {
+          const mmsi = ship.mmsi.toString();
+
+          fleetRegistry[mmsi] = {
+            name: ship.name,
+            class: ship.class,
+            lat: ship.lat || 0.0,
+            lon: ship.lon || 0.0,
+            speed: ship.speed || 0.0,
+            heading: ship.heading || 0
+          };
+
+          const icon = createShipIcon(fleetRegistry[mmsi].speed, fleetRegistry[mmsi].heading);
+          const marker = L.marker([fleetRegistry[mmsi].lat, fleetRegistry[mmsi].lon], { icon: icon }).addTo(map);
+
+          const statusText = fleetRegistry[mmsi].speed > 1.0 ? `At Sea (${fleetRegistry[mmsi].speed} kts)` : `Docked / Anchored`;
+
+          marker.bindPopup(`
+            <div class="popup-title">🚢 ${fleetRegistry[mmsi].name}</div>
+            <div class="popup-class">${fleetRegistry[mmsi].class}</div>
+            <b>Status:</b> ${statusText}<br>
+            <b>Heading:</b> ${fleetRegistry[mmsi].heading}°<br>
+            <b>Coordinates:</b> ${fleetRegistry[mmsi].lat.toFixed(3)}, ${fleetRegistry[mmsi].lon.toFixed(3)}
+          `);
+
+          activeMarkers[mmsi] = marker;
+        });
+
+        const totalShips = Object.keys(fleetRegistry).length;
+        countEl.innerText = `Ships displayed: ${totalShips} / ${totalShips}`;
+        statusEl.className = "status-static";
+        statusEl.innerText = "Baseline Loaded — Connecting Proxy...";
+
+        // Begin live updates once registry is initialized
+        connectAISStream();
+
+      } catch (err) {
+        console.error(err);
+        statusEl.className = "status-error";
+        statusEl.innerText = "Error Loading Database";
+      }
+    }
+
+    // Connect to Supabase Edge Function WebSocket Relay
     function connectAISStream() {
       const statusEl = document.getElementById('status');
+      const SUPABASE_WS_URL = `wss://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/ais-relay`;
 
-      if (!AISSTREAM_API_KEY || AISSTREAM_API_KEY === "YOUR_AISSTREAM_API_KEY") {
-        statusEl.className = "status-static";
-        statusEl.innerText = "Displaying Baseline Positions";
-        return;
-      }
-
-      const socket = new WebSocket("wss://stream.aisstream.io/v0/stream");
+      const socket = new WebSocket(SUPABASE_WS_URL);
 
       socket.onopen = function () {
         statusEl.className = "status-active";
         statusEl.innerText = "● Live AIS Positions Active";
-
-        const subscriptionMessage = {
-          APIKey: AISSTREAM_API_KEY,
-          BoundingBoxes: [[[-90, -180], [90, 180]]],
-          FiltersShipMMSI: mmsiList
-        };
-
-        socket.send(JSON.stringify(subscriptionMessage));
       };
 
       socket.onmessage = function (event) {
@@ -211,7 +193,6 @@
           const shipInfo = fleetRegistry[mmsi] || { name: `MMSI: ${mmsi}`, class: "Royal Caribbean" };
 
           if (activeMarkers[mmsi]) {
-            // Update placement dynamically on map
             activeMarkers[mmsi].setLatLng([lat, lon]);
             activeMarkers[mmsi].setIcon(createShipIcon(speed, heading));
 
@@ -230,17 +211,19 @@
 
       socket.onerror = function () {
         statusEl.className = "status-error";
-        statusEl.innerText = "AIS Stream Error - Check Key";
+        statusEl.innerText = "Proxy Connection Error";
       };
 
       socket.onclose = function () {
         statusEl.className = "status-static";
-        statusEl.innerText = "Reconnecting AIS...";
+        statusEl.innerText = "Reconnecting to Proxy...";
         setTimeout(connectAISStream, 5000);
       };
     }
 
-    connectAISStream();
+    // Initialize Database load
+    loadFleetFromSupabase();
   </script>
 </body>
+</html>
 </html>
